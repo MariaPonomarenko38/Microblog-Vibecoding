@@ -215,7 +215,7 @@
             const likedUsers = JSON.parse(localStorage.getItem('liked_users_' + postKey) || '[]');
             const isLiked = likedUsers.includes(currentUserId);
             postDiv.innerHTML = `
-                <div class="feed-username">${post.username}</div>
+                <div class="feed-username"><a href="#" onclick="renderUserPosts('${post.userId}', '${post.username || userIdToUsername[post.userId] || post.userId}')" style="color:inherit; text-decoration:none;">${post.username || userIdToUsername[post.userId] || post.userId}</a></div>
                 <div class="feed-post-date">${post.date}</div>
                 <div>${post.content}</div>
                 <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
@@ -231,16 +231,20 @@
     let userIdToUsername = {};
     // Fetch all users and build the map for feed display
     async function fetchAllUsers() {
+        console.info('Fetching all users for username mapping...');
         try {
             const response = await fetch('/all_users');
             if (response.ok) {
                 const users = await response.json();
+                console.info(`Fetched ${users.length} users`);
                 users.forEach(u => {
                     userIdToUsername[u.id] = u.username;
                 });
+            } else {
+                console.warn('Failed to fetch /all_users');
             }
         } catch (e) {
-            // ignore
+            console.error('Error fetching users:', e);
         }
     }
     fetchAllUsers();
@@ -269,9 +273,11 @@
         }
         const date = new Date().toLocaleString();
         const userId = window.location.pathname.split('/').pop();
+        const username = document.getElementById('username').textContent || userId || 'Anonymous';
+        console.info(`Creating post for userId=${userId} username=${username}`);
         // Save post in localStorage (simulate backend)
         let posts = JSON.parse(localStorage.getItem('posts_' + userId) || '[]');
-        posts.unshift({ content, date });
+        posts.unshift({ content, date, username });
         localStorage.setItem('posts_' + userId, JSON.stringify(posts));
         closeAddPostModal();
         renderPosts();
@@ -433,6 +439,26 @@
         const result = await response.json();
         if (response.ok) {
             document.getElementById('username').textContent = result.username;
+            console.info(`Loaded profile for ${result.username} (${result.id})`);
+            // Ensure any existing posts in localStorage for this user have the username set
+            try {
+                let postsKey = 'posts_' + result.id;
+                let posts = JSON.parse(localStorage.getItem(postsKey) || '[]');
+                let updated = false;
+                posts = posts.map(p => {
+                    if (!p.username) {
+                        p.username = result.username;
+                        updated = true;
+                    }
+                    return p;
+                });
+                if (updated) {
+                    localStorage.setItem(postsKey, JSON.stringify(posts));
+                    console.info(`Updated ${posts.length} local posts to include username for ${result.username}`);
+                }
+            } catch (e) {
+                console.error('Error updating local posts with username:', e);
+            }
         } else {
             document.getElementById('message').textContent = result.detail || 'Could not load profile.';
         }
