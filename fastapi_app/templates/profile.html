@@ -1,0 +1,443 @@
+{% extends "base.html" %}
+{% block head %}
+                .feed-modal {
+                    display: none;
+                    position: fixed;
+                    z-index: 4000;
+                    left: 0;
+                    top: 0;
+                    width: 100vw;
+                    height: 100vh;
+                    overflow: auto;
+                    background: rgba(0,0,0,0.3);
+                }
+                .feed-content {
+                    background: #fff;
+                    margin: 5% auto;
+                    padding: 24px;
+                    border-radius: 8px;
+                    width: 420px;
+                    max-width: 95vw;
+                    box-shadow: 0 2px 16px rgba(0,0,0,0.2);
+                    display: flex;
+                    flex-direction: column;
+                    align-items: stretch;
+                }
+                .feed-content h3 {
+                    margin-top: 0;
+                }
+                .feed-post {
+                    background: #f4f4f4;
+                    border-radius: 8px;
+                    padding: 12px 18px;
+                    margin-bottom: 16px;
+                    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+                }
+                .feed-post-date {
+                    font-size: 0.9em;
+                    color: #888;
+                    margin-bottom: 6px;
+                }
+                .feed-username {
+                    font-weight: bold;
+                    color: #007bff;
+                    margin-bottom: 4px;
+                }
+        <style>
+            .modal {
+                display: none;
+                position: fixed;
+                z-index: 3000;
+                left: 0;
+                top: 0;
+                width: 100vw;
+                height: 100vh;
+                overflow: auto;
+                background: rgba(0,0,0,0.3);
+            }
+            .modal-content {
+                background: #fff;
+                margin: 10% auto;
+                padding: 24px;
+                border-radius: 8px;
+                width: 350px;
+                box-shadow: 0 2px 16px rgba(0,0,0,0.2);
+                display: flex;
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .modal-content textarea {
+                resize: vertical;
+                min-height: 80px;
+                max-height: 200px;
+                margin-bottom: 16px;
+            }
+            .modal-content button {
+                width: 100%;
+            }
+            .close {
+                color: #aaa;
+                float: right;
+                font-size: 24px;
+                font-weight: bold;
+                cursor: pointer;
+                margin-left: auto;
+            }
+            .post {
+                background: #f4f4f4;
+                border-radius: 8px;
+                padding: 12px 18px;
+                margin-bottom: 16px;
+                box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+            }
+            .post-date {
+                font-size: 0.9em;
+                color: #888;
+                margin-bottom: 6px;
+            }
+        </style>
+    <style>
+        .sidebar {
+            position: fixed;
+            left: 0;
+            bottom: 40px;
+            width: 180px;
+            background: #f8f9fa;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            box-shadow: 2px 0 8px rgba(0,0,0,0.04);
+        }
+        .sidebar button {
+            display: block;
+            width: 90%;
+            margin: 0 auto 18px auto;
+            padding: 12px;
+            font-size: 16px;
+            background: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .sidebar button:hover {
+            background: #0056b3;
+        }
+        .main-content {
+            margin-left: 200px;
+            padding-top: 60px;
+        }
+        .username-top {
+            position: fixed;
+            top: 18px;
+            right: 40px;
+            font-size: 1.1rem;
+            color: #fff;
+            font-weight: 500;
+            z-index: 2000;
+            background: #007bff;
+            padding: 6px 18px;
+            border-radius: 18px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+    </style>
+{% endblock %}
+{% block content %}
+    <div id="feedModal" class="feed-modal">
+        <div class="feed-content">
+            <span class="close" onclick="closeFeedModal()">&times;</span>
+            <div id="feedPosts"></div>
+        </div>
+    </div>
+    <span id="username" class="username-top" style="cursor:pointer;" onclick="renderPosts()"></span>
+    <div class="sidebar">
+        <button onclick="goToFeed()">Feed</button>
+        <button onclick="showAddPostModal()">Add Post</button>
+        <button onclick="showAllUsers()">All Users</button>
+        <button onclick="logout()">Log Out</button>
+    </div>
+    <div id="message" style="margin-left:200px; padding-top:60px;"></div>
+    <div id="mainContent" style="margin-left:200px; padding:20px 40px 0 0;"></div>
+    <div id="addPostModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeAddPostModal()">&times;</span>
+            <h3>Add Post</h3>
+            <textarea id="postContent" maxlength="500" placeholder="Write your post (max 500 chars)..."></textarea>
+            <div style="text-align:right; font-size:0.9em; color:#888; margin-bottom:8px;">
+                <span id="charCount">0</span>/500
+            </div>
+            <button onclick="submitPost()">Post</button>
+        </div>
+    </div>
+
+    <!-- Comment Modal -->
+    <div id="commentModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeCommentModal()">&times;</span>
+            <h3>Comments</h3>
+            <div id="commentList" style="max-height:240px; overflow:auto; margin-bottom:12px;">No comments yet.</div>
+            <div style="display:flex; gap:8px;">
+                <input id="commentInput" type="text" placeholder="Write a comment..." style="flex:1;" />
+                <button onclick="postCommentFromModal()">OK</button>
+            </div>
+        </div>
+    </div>
+    <script>
+    function goToFeed() {
+        renderFeedInMainContent();
+    }
+    function renderFeedInMainContent() {
+        let allPosts = [];
+        for (let key in localStorage) {
+            if (key.startsWith('posts_')) {
+                let userId = key.replace('posts_', '');
+                let posts = JSON.parse(localStorage.getItem(key) || '[]');
+                let username = userIdToUsername[userId] || userId;
+                posts.forEach(post => {
+                    allPosts.push({ ...post, userId, username });
+                });
+            }
+        }
+        allPosts.sort((a, b) => new Date(b.date) - new Date(a.date));
+        const mainDiv = document.getElementById('mainContent');
+        mainDiv.innerHTML = '';
+        if (allPosts.length === 0) {
+            mainDiv.innerHTML = '<div style="color:#888;">No posts yet.</div>';
+            return;
+        }
+        const currentUserId = window.location.pathname.split('/').pop();
+        allPosts.forEach((post, idx) => {
+            const postDiv = document.createElement('div');
+            postDiv.className = 'feed-post';
+            const postKey = `${post.userId}_${post.date}`;
+            const likes = parseInt(localStorage.getItem('likes_' + postKey) || '0');
+            const likedUsers = JSON.parse(localStorage.getItem('liked_users_' + postKey) || '[]');
+            const isLiked = likedUsers.includes(currentUserId);
+            postDiv.innerHTML = `
+                <div class="feed-username">${post.username}</div>
+                <div class="feed-post-date">${post.date}</div>
+                <div>${post.content}</div>
+                <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
+                    <button data-postkey="${postKey}" onclick="likePost(this)" data-liked="${isLiked}">Like</button>
+                    <span class="like-count" style="min-width:24px;display:inline-block;">${likes}</span>
+                    <button onclick="openCommentModal('${postKey}')">Comment</button>
+                </div>
+            `;
+            mainDiv.appendChild(postDiv);
+        });
+    }
+    // Map userId to username for feed display
+    let userIdToUsername = {};
+    // Fetch all users and build the map for feed display
+    async function fetchAllUsers() {
+        try {
+            const response = await fetch('/all_users');
+            if (response.ok) {
+                const users = await response.json();
+                users.forEach(u => {
+                    userIdToUsername[u.id] = u.username;
+                });
+            }
+        } catch (e) {
+            // ignore
+        }
+    }
+    fetchAllUsers();
+    function showAddPostModal() {
+        document.getElementById('addPostModal').style.display = 'block';
+        document.getElementById('postContent').value = '';
+        document.getElementById('charCount').textContent = '0';
+    }
+    function closeAddPostModal() {
+        document.getElementById('addPostModal').style.display = 'none';
+    }
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('postContent').addEventListener('input', function() {
+            document.getElementById('charCount').textContent = this.value.length;
+        });
+    });
+    function submitPost() {
+        const content = document.getElementById('postContent').value.trim();
+        if (!content) {
+            alert('Post cannot be empty.');
+            return;
+        }
+        if (content.length > 500) {
+            alert('Post cannot exceed 500 characters.');
+            return;
+        }
+        const date = new Date().toLocaleString();
+        const userId = window.location.pathname.split('/').pop();
+        // Save post in localStorage (simulate backend)
+        let posts = JSON.parse(localStorage.getItem('posts_' + userId) || '[]');
+        posts.unshift({ content, date });
+        localStorage.setItem('posts_' + userId, JSON.stringify(posts));
+        closeAddPostModal();
+        renderPosts();
+    }
+    function renderPosts() {
+        const userId = window.location.pathname.split('/').pop();
+        let posts = JSON.parse(localStorage.getItem('posts_' + userId) || '[]');
+        const mainDiv = document.getElementById('mainContent');
+        mainDiv.innerHTML = '';
+        posts.forEach((post, idx) => {
+            const postDiv = document.createElement('div');
+            postDiv.className = 'post';
+            const postKey = `${userId}_${post.date}`;
+            const likes = parseInt(localStorage.getItem('likes_' + postKey) || '0');
+            const likedUsers = JSON.parse(localStorage.getItem('liked_users_' + postKey) || '[]');
+            const isLiked = likedUsers.includes(userId);
+            postDiv.innerHTML = `
+                <div class="post-date">${post.date}</div>
+                <div>${post.content}</div>
+                <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
+                    <button data-postkey="${postKey}" onclick="likePost(this)" data-liked="${isLiked}">Like</button>
+                    <span class="like-count" style="min-width:24px;display:inline-block;">${likes}</span>
+                    <button onclick="openCommentModal('${postKey}')">Comment</button>
+                </div>
+            `;
+            mainDiv.appendChild(postDiv);
+        });
+    }
+    // Like button logic: toggles like count up/down on each click
+    function likePost(btn) {
+        const postKey = btn.getAttribute('data-postkey');
+        const userId = window.location.pathname.split('/').pop();
+        let likedUsers = JSON.parse(localStorage.getItem('liked_users_' + postKey) || '[]');
+        let likes = parseInt(localStorage.getItem('likes_' + postKey) || '0');
+        const idx = likedUsers.indexOf(userId);
+        if (idx === -1) {
+            // Not liked yet, so like
+            likedUsers.push(userId);
+            likes++;
+        } else {
+            // Already liked, so unlike
+            likedUsers.splice(idx, 1);
+            likes = Math.max(0, likes - 1);
+        }
+        localStorage.setItem('liked_users_' + postKey, JSON.stringify(likedUsers));
+        localStorage.setItem('likes_' + postKey, likes);
+        // Update the counter in the DOM immediately
+        const countSpan = btn.parentElement.querySelector('.like-count');
+        if (countSpan) countSpan.textContent = likes;
+        // Update button data-liked
+        btn.setAttribute('data-liked', likedUsers.includes(userId));
+    }
+
+    function openCommentModal(postKey) {
+        const modal = document.getElementById('commentModal');
+        modal.dataset.postkey = postKey;
+        modal.style.display = 'block';
+        renderComments(postKey);
+        document.getElementById('commentInput').value = '';
+        document.getElementById('commentInput').focus();
+    }
+
+    function closeCommentModal() {
+        document.getElementById('commentModal').style.display = 'none';
+    }
+
+    function renderComments(postKey) {
+        const list = document.getElementById('commentList');
+        const comments = JSON.parse(localStorage.getItem('comments_' + postKey) || '[]');
+        if (!comments.length) {
+            list.innerHTML = '<div style="color:#888;">No comments yet.</div>';
+            return;
+        }
+        list.innerHTML = comments.map(c => `<div style="margin-bottom:8px;"><b>${c.user}:</b> ${c.text}</div>`).join('');
+    }
+
+    function postCommentFromModal() {
+        const modal = document.getElementById('commentModal');
+        const postKey = modal.dataset.postkey;
+        const input = document.getElementById('commentInput');
+        const text = input.value.trim();
+        if (!text) return;
+        const user = document.getElementById('username').textContent || 'User';
+        let comments = JSON.parse(localStorage.getItem('comments_' + postKey) || '[]');
+        comments.push({ user, text });
+        localStorage.setItem('comments_' + postKey, JSON.stringify(comments));
+        renderComments(postKey);
+        input.value = '';
+    }
+
+    async function showAllUsers() {
+        const mainDiv = document.getElementById('mainContent');
+        mainDiv.innerHTML = '<h3>All Users</h3><div id="usersList" style="margin-top:12px;"></div>';
+        try {
+            const res = await fetch('/all_users');
+            if (!res.ok) {
+                document.getElementById('usersList').innerHTML = '<div style="color:#888;">Could not load users.</div>';
+                return;
+            }
+            const users = await res.json();
+            if (!users.length) {
+                document.getElementById('usersList').innerHTML = '<div style="color:#888;">No users found.</div>';
+                return;
+            }
+            document.getElementById('usersList').innerHTML = users.map(u => `
+                <div style="padding:10px 0; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
+                    <div style="font-weight:500;">${u.username}</div>
+                    <div>
+                        <button onclick="renderUserPosts('${u.id}', '${u.username}')">View Posts</button>
+                    </div>
+                </div>
+            `).join('');
+        } catch (e) {
+            document.getElementById('usersList').innerHTML = '<div style="color:#888;">Error loading users.</div>';
+        }
+    }
+
+    function renderUserPosts(userId, username) {
+        const mainDiv = document.getElementById('mainContent');
+        mainDiv.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between"><h3>${username}</h3><button onclick="showAllUsers()">Back</button></div>`;
+        let posts = JSON.parse(localStorage.getItem('posts_' + userId) || '[]');
+        if (!posts.length) {
+            mainDiv.innerHTML += '<div style="color:#888; margin-top:12px;">No posts yet.</div>';
+            return;
+        }
+        posts.forEach(post => {
+            const postKey = `${userId}_${post.date}`;
+            const likes = parseInt(localStorage.getItem('likes_' + postKey) || '0');
+            const postHtml = `
+                <div class="post" style="margin-top:12px;">
+                    <div class="post-date">${post.date}</div>
+                    <div>${post.content}</div>
+                    <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
+                        <button data-postkey="${postKey}" onclick="likePost(this)">Like</button>
+                        <span class="like-count" style="min-width:24px;display:inline-block;">${likes}</span>
+                        <button onclick="openCommentModal('${postKey}')">Comment</button>
+                    </div>
+                </div>
+            `;
+            mainDiv.innerHTML += postHtml;
+        });
+    }
+    function logout() {
+        localStorage.removeItem('access_token');
+        window.location.href = '/login';
+    }
+    async function fetchProfile() {
+        const token = localStorage.getItem('access_token');
+        const userId = window.location.pathname.split('/').pop();
+        if (!token) {
+            document.getElementById('message').textContent = 'You are not logged in.';
+            return;
+        }
+        const response = await fetch(`/profile/${userId}`, {
+            headers: {
+                'Authorization': 'Bearer ' + token
+            }
+        });
+        const result = await response.json();
+        if (response.ok) {
+            document.getElementById('username').textContent = result.username;
+        } else {
+            document.getElementById('message').textContent = result.detail || 'Could not load profile.';
+        }
+    }
+    fetchProfile();
+    renderPosts();
+    </script>
+{% endblock %}

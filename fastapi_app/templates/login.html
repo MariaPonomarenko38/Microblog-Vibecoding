@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <h2>Login</h2>
+        <form id="login-form">
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" required>
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required>
+            <button type="submit">Login</button>
+        </form>
+        <button id="signup-btn" style="width:100%;margin-top:10px;background:#28a745;" onclick="window.location.href='/signup'">Sign Up</button>
+        </form>
+        <div id="message"></div>
+    </div>
+    <script>
+    document.getElementById('login-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        const response = await fetch('/token', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
+        });
+        const result = await response.json();
+        if (response.ok && result.access_token && result.token_type) {
+            localStorage.setItem('access_token', result.access_token);
+            window.location.href = `/profile_page/${result.access_token}`;
+        } else {
+            document.getElementById('message').textContent = result.detail || 'Login failed.';
+        }
+    });
+    </script>
+</body>
+</html>
